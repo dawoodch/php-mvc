@@ -1,5 +1,7 @@
 <?php
 
+namespace Core;
+
 
 class Router
 {
@@ -12,6 +14,8 @@ class Router
         $route = preg_replace('/\//', '\\/' , $route);
         // convert variables e.g {controller}
         $route = preg_replace('/\{([a-z]+)\}/' , '(?P<\1>[a-z-]+)',$route);
+        //  convert variable with custom regular expression e.g {id:\d+}
+        $route = preg_replace('/\{([a-z]+):([^\}]+)\}/', '(?P<\1>\2)' , $route);
         // add start and end delimiters and case insensitive flag
         $route = '/^' . $route . '$/i';
 
@@ -73,6 +77,36 @@ class Router
     public function getParams(): array
     {
         return $this->params;
+    }
+    
+    public function dispatch($url){
+        if($this->match($url)){
+            $controller = $this->params['controller'];
+            $controller = $this->convertToStudlyCase($controller);
+            $controller = "App\Controllers\\$controller";
+            if (class_exists($controller)){
+                $controller_object = new $controller();
+                $action = $this->params['action'];
+                $action = $this->convertToCamelCase($action);
+                if(is_callable([$controller_object , $action])){
+                    $controller_object->$action();
+                }else{
+                    echo "Method $action (in controller $controller) not found";
+                }
+            }else{
+                echo "Controller class $controller not found";
+            }
+        }else{
+            echo "No route found";
+        }
+    }
+
+    protected function convertToStudlyCase($string){
+        return str_replace(' ','',ucwords(str_replace('-',' ',$string)));   // converting case-word to CaseWord
+    }
+
+    protected function convertToCamelCase($string){
+        return lcfirst($this->convertToStudlyCase($string));    // converting case-word to caseWord
     }
 
 }
